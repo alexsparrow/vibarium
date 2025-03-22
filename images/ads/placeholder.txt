@@ -1,0 +1,1 @@
+This is a placeholder for advertisement images. In a real implementation, these would be actual PNG images.

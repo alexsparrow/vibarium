@@ -1,0 +1,18 @@
+{
+  "advertisements": [
+    {
+      "id": "ad1",
+      "position": "north1",
+      "name": "Roman Baths Spa Experience",
+      "description": "Relax and rejuvenate in our authentic Roman spa",
+      "image": "images/ads/roman_baths_spa_experience.png"
+    },
+    {
+      "id": "ad2",
+      "position": "none",
+      "name": "Sparrow Crane Hire",
+      "description": "A lifting experience",
+      "image": "images/ads/sch.png"
+    }
+  ]
+}

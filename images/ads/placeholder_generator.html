@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ad Placeholder Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Advertisement Placeholder Generator</h1>
+    
+    <div class="controls">
+        <div>
+            <label for="adName">Ad Name:</label>
+            <input type="text" id="adName" value="Roman Baths Spa Experience">
+        </div>
+        <div>
+            <label for="bgColor">Background Color:</label>
+            <input type="color" id="bgColor" value="#f5deb3">
+        </div>
+        <div>
+            <label for="textColor">Text Color:</label>
+            <input type="color" id="textColor" value="#8b4513">
+        </div>
+        <button id="generateBtn">Generate Placeholder</button>
+    </div>
+    
+    <canvas id="adCanvas" width="600" height="300"></canvas>
+    
+    <a id="downloadLink" download="ad_placeholder.png">Download Image</a>
+    
+    <script>
+        const canvas = document.getElementById('adCanvas');
+        const ctx = canvas.getContext('2d');
+        const adNameInput = document.getElementById('adName');
+        const bgColorInput = document.getElementById('bgColor');
+        const textColorInput = document.getElementById('textColor');
+        const generateBtn = document.getElementById('generateBtn');
+        const downloadLink = document.getElementById('downloadLink');
+        
+        function generatePlaceholder() {
+            const adName = adNameInput.value || 'Roman Advertisement';
+            const bgColor = bgColorInput.value;
+            const textColor = textColorInput.value;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw background
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw border
+            ctx.strokeStyle = textColor;
+            ctx.lineWidth = 10;
+            ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
+            
+            // Draw decorative elements (Roman-style)
+            drawRomanDecoration(textColor);
+            
+            // Draw text
+            ctx.fillStyle = textColor;
+            ctx.textAlign = 'center';
+            
+            // Draw title
+            ctx.font = 'bold 36px serif';
+            ctx.fillText(adName, canvas.width / 2, canvas.height / 2);
+            
+            // Draw "Advertisement" text
+            ctx.font = '24px serif';
+            ctx.fillText('Advertisement', canvas.width / 2, canvas.height / 2 + 50);
+            
+            // Update download link
+            const dataUrl = canvas.toDataURL('image/png');
+            downloadLink.href = dataUrl;
+            downloadLink.download = adName.toLowerCase().replace(/\s+/g, '_') + '.png';
+        }
+        
+        function drawRomanDecoration(color) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            
+            // Draw laurel wreath-like decoration
+            const centerX = canvas.width / 2;
+            const centerY = 80;
+            const radius = 60;
+            
+            // Left side of wreath
+            for (let i = 0; i < 10; i++) {
+                const angle = Math.PI / 2 - (i * Math.PI / 20);
+                const length = 40;
+                
+                const startX = centerX - radius * Math.cos(angle);
+                const startY = centerY - radius * Math.sin(angle);
+                const endX = startX - length * Math.cos(angle - Math.PI / 4);
+                const endY = startY - length * Math.sin(angle - Math.PI / 4);
+                
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.quadraticCurveTo(
+                    startX - length * 0.7 * Math.cos(angle),
+                    startY - length * 0.7 * Math.sin(angle),
+                    endX, endY
+                );
+                ctx.stroke();
+            }
+            
+            // Right side of wreath
+            for (let i = 0; i < 10; i++) {
+                const angle = Math.PI / 2 + (i * Math.PI / 20);
+                const length = 40;
+                
+                const startX = centerX + radius * Math.cos(angle);
+                const startY = centerY - radius * Math.sin(angle);
+                const endX = startX + length * Math.cos(angle + Math.PI / 4);
+                const endY = startY - length * Math.sin(angle + Math.PI / 4);
+                
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.quadraticCurveTo(
+                    startX + length * 0.7 * Math.cos(angle),
+                    startY - length * 0.7 * Math.sin(angle),
+                    endX, endY
+                );
+                ctx.stroke();
+            }
+            
+            // Draw Roman column-like decorations on sides
+            drawRomanColumn(50, canvas.height / 2, color);
+            drawRomanColumn(canvas.width - 50, canvas.height / 2, color);
+        }
+        
+        function drawRomanColumn(x, y, color) {
+            const columnWidth = 30;
+            const columnHeight = 200;
+            
+            ctx.fillStyle = color;
+            
+            // Column base
+            ctx.fillRect(x - columnWidth / 2 - 10, y + columnHeight / 2 - 10, columnWidth + 20, 20);
+            
+            // Column capital
+            ctx.fillRect(x - columnWidth / 2 - 10, y - columnHeight / 2 - 10, columnWidth + 20, 20);
+            
+            // Column shaft
+            ctx.fillRect(x - columnWidth / 2, y - columnHeight / 2, columnWidth, columnHeight);
+            
+            // Column fluting (vertical lines)
+            ctx.strokeStyle = bgColorInput.value;
+            ctx.lineWidth = 1;
+            
+            for (let i = 1; i < columnWidth; i += 5) {
+                ctx.beginPath();
+                ctx.moveTo(x - columnWidth / 2 + i, y - columnHeight / 2 + 10);
+                ctx.lineTo(x - columnWidth / 2 + i, y + columnHeight / 2 - 10);
+                ctx.stroke();
+            }
+        }
+        
+        // Generate initial placeholder
+        generatePlaceholder();
+        
+        // Add event listener
+        generateBtn.addEventListener('click', generatePlaceholder);
+        
+        // Generate placeholders for all ads
+        const adNames = [
+            "Roman Baths Spa Experience",
+            "Gladiator Training Academy",
+            "Caesar's Feast Restaurant",
+            "Roman Wine Tasting",
+            "Chariot Racing Experience",
+            "Roman Artifact Exhibition",
+            "Toga Party Nights",
+            "Roman Bath Products",
+            "Roman History Tours",
+            "Roman Language Classes",
+            "Roman Jewelry Crafting",
+            "Roman Theater Performances"
+        ];
+        
+        // Function to generate and download all placeholders
+        function generateAllPlaceholders() {
+            let index = 0;
+            
+            function generateNext() {
+                if (index < adNames.length) {
+                    const adName = adNames[index];
+                    adNameInput.value = adName;
+                    
+                    // Generate random colors for variety
+                    const hue = Math.floor(Math.random() * 360);
+                    bgColorInput.value = `hsl(${hue}, 70%, 85%)`;
+                    textColorInput.value = `hsl(${hue}, 70%, 30%)`;
+                    
+                    generatePlaceholder();
+                    
+                    // Create a link and trigger download
+                    const filename = adName.toLowerCase().replace(/\s+/g, '_') + '.png';
+                    const link = document.createElement('a');
+                    link.href = canvas.toDataURL('image/png');
+                    link.download = filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    index++;
+                    setTimeout(generateNext, 500); // Wait a bit between downloads
+                }
+            }
+            
+            generateNext();
+        }
+        
+        // Add a button to generate all placeholders
+        const generateAllBtn = document.createElement('button');
+        generateAllBtn.textContent = 'Generate All Placeholders';
+        generateAllBtn.addEventListener('click', generateAllPlaceholders);
+        document.querySelector('.controls').appendChild(generateAllBtn);
+    </script>
+</body>
+</html>

@@ -539,7 +539,7 @@ export class Environment {
         
         // Define the boundary size
         const boundarySize = 50;
-        const wallHeight = 5;
+        const wallHeight = 10; // Increased wall height from 5 to 10
         const wallThickness = 2;
         
         // Create the four boundary walls
@@ -587,6 +587,232 @@ export class Environment {
             // West wall
             { x: -boundarySize, z: 0, radius: wallThickness / 2 }
         );
+        
+        // Add advertising boards to the walls
+        this.loadAdvertisements().then(advertisementsMap => {
+            // Create advertising boards for each wall with position keys
+            const northPositions = ['north1', 'north2'];
+            const southPositions = ['south1', 'south2'];
+            const eastPositions = ['east1', 'east2'];
+            const westPositions = ['west1', 'west2'];
+            
+            // Create advertising boards for each wall
+            this.createAdvertisingBoards(northWall, northPositions, 'north', advertisementsMap);
+            this.createAdvertisingBoards(southWall, southPositions, 'south', advertisementsMap);
+            this.createAdvertisingBoards(eastWall, eastPositions, 'east', advertisementsMap);
+            this.createAdvertisingBoards(westWall, westPositions, 'west', advertisementsMap);
+        }).catch(error => {
+            console.error("Failed to load advertisements:", error);
+        });
+    }
+    
+    // Load advertisements from JSON file and convert to a map by position
+    async loadAdvertisements() {
+        try {
+            const response = await fetch('data/advertisements.json');
+            const data = await response.json();
+            
+            // Convert array to map indexed by position
+            const advertisementsMap = {};
+            data.advertisements.forEach(ad => {
+                advertisementsMap[ad.position] = ad;
+            });
+            
+            return advertisementsMap;
+        } catch (error) {
+            console.error("Error loading advertisements:", error);
+            return {};
+        }
+    }
+    
+    // Create advertising boards on a wall
+    createAdvertisingBoards(wall, positionKeys, wallSide, advertisementsMap) {
+        if (!positionKeys || positionKeys.length === 0) {
+            return;
+        }
+        
+        // Create a material for the advertising board frame
+        const frameMaterial = TextureGenerator.createWoodMaterial({
+            baseColor: { r: 139, g: 69, b: 19 },
+            darkColor: { r: 100, g: 50, b: 10 },
+            lightColor: { r: 160, g: 90, b: 30 },
+            roughness: 0.8,
+            bumpiness: 0.5,
+            grainSize: 0.2
+        });
+        
+        // Create a default material for the advertisement
+        const defaultAdMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xf5deb3,
+            side: THREE.DoubleSide
+        });
+        
+        // Board dimensions
+        const boardWidth = 15;
+        const boardHeight = 7;
+        const boardDepth = 0.5;
+        const frameThickness = 0.5;
+        
+        // Spacing between boards
+        const spacing = 25;
+        
+        // Position offset based on wall side and rotation to face inward
+        let xOffset = 0;
+        let zOffset = 0;
+        let rotation = 0;
+        
+        switch (wallSide) {
+            case 'north':
+                zOffset = -1.5; // Slightly in front of the wall (towards inside)
+                rotation = Math.PI; // Rotate to face inside (south)
+                break;
+            case 'south':
+                zOffset = 1.5; // Slightly in front of the wall (towards inside)
+                rotation = 0; // Rotate to face inside (north)
+                break;
+            case 'east':
+                xOffset = -1.5; // Slightly in front of the wall (towards inside)
+                rotation = -Math.PI / 2; // Rotate to face inside (west)
+                break;
+            case 'west':
+                xOffset = 1.5; // Slightly in front of the wall (towards inside)
+                rotation = Math.PI / 2; // Rotate to face inside (east)
+                break;
+        }
+        
+        // Create boards for each position key
+        positionKeys.forEach((positionKey, index) => {
+            // Get advertisement for this position if it exists
+            const ad = advertisementsMap[positionKey];
+            
+            // Calculate position
+            let x = 0;
+            let z = 0;
+            
+            if (wallSide === 'north' || wallSide === 'south') {
+                // For north and south walls, vary the x position
+                x = -spacing + index * spacing;
+            } else {
+                // For east and west walls, vary the z position
+                z = -spacing + index * spacing;
+            }
+            
+            // Create board frame
+            const frameGeometry = new THREE.BoxGeometry(
+                boardWidth + frameThickness * 2, 
+                boardHeight + frameThickness * 2, 
+                boardDepth
+            );
+            const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+            
+            // Create advertisement board
+            const boardGeometry = new THREE.PlaneGeometry(boardWidth, boardHeight);
+            const board = new THREE.Mesh(boardGeometry, defaultAdMaterial);
+            
+            // Position the board slightly in front of the frame
+            board.position.z = boardDepth / 2 + 0.01;
+            
+            // Create a group for the board and frame
+            const boardGroup = new THREE.Group();
+            boardGroup.add(frame);
+            boardGroup.add(board);
+            
+            // Position and rotate the board group
+            const wallPosition = wall.position.clone();
+            boardGroup.position.set(
+                wallPosition.x + x + xOffset,
+                wallPosition.y, // Center vertically on the wall
+                wallPosition.z + z + zOffset
+            );
+            boardGroup.rotation.y = rotation;
+            
+            // Add to scene
+            this.scene.add(boardGroup);
+            
+            // If we have an advertisement for this position, load its image
+            if (ad) {
+                // Try to load the advertisement image
+                const textureLoader = new THREE.TextureLoader(this.loadingManager);
+                
+                // Log the image path for debugging
+                console.log(`Loading advertisement image: ${ad.image} for ad ${ad.id} (${ad.name}) at position ${positionKey}`);
+                
+                // Set up the loading manager to handle errors
+                this.loadingManager.onError = (url) => {
+                    console.error(`Error loading texture: ${url}`);
+                };
+                
+                textureLoader.load(
+                    ad.image,
+                    (texture) => {
+                        console.log(`Successfully loaded texture for ad ${ad.id}: ${ad.image}`);
+                        
+                        // Ensure texture is properly configured
+                        texture.flipY = true; // Set flipY to true to fix upside-down images
+                        texture.needsUpdate = true;
+                        
+                        // Create material with loaded texture
+                        const material = new THREE.MeshBasicMaterial({
+                            map: texture,
+                            side: THREE.DoubleSide
+                        });
+                        
+                        // Apply the material to the board
+                        board.material = material;
+                        
+                        // Force an update
+                        board.material.needsUpdate = true;
+                    },
+                    // Progress callback
+                    (xhr) => {
+                        console.log(`${ad.id} texture: ${(xhr.loaded / xhr.total * 100)}% loaded`);
+                    },
+                    // Error callback
+                    (error) => {
+                        console.warn(`Failed to load texture for ad ${ad.id} (${ad.name}):`, error);
+                        this.createPlaceholderAd(board);
+                    }
+                );
+            } else {
+                // No advertisement for this position, create a placeholder
+                this.createPlaceholderAd(board);
+            }
+        });
+    }
+    
+    // Create a placeholder advertisement with "Your ad here" text
+    createPlaceholderAd(board) {
+        // Create a canvas with "Your ad here" text
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+        
+        // Fill background with a solid color (no patterns)
+        ctx.fillStyle = '#f5deb3'; // Wheat color
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Add border
+        ctx.strokeStyle = '#8b4513'; // SaddleBrown color
+        ctx.lineWidth = 10;
+        ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
+        
+        // Add text
+        ctx.fillStyle = '#8b4513'; // SaddleBrown color
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle'; // Center text vertically
+        ctx.font = 'bold 48px Arial, sans-serif'; // Use a web-safe font
+        ctx.fillText("Your ad here", canvas.width / 2, canvas.height / 2);
+        
+        // Create texture from canvas
+        const texture = new THREE.CanvasTexture(canvas);
+        board.material = new THREE.MeshBasicMaterial({
+            map: texture,
+            side: THREE.DoubleSide
+        });
+        
+        // Force an update
+        board.material.needsUpdate = true;
     }
     
     // Create a bath structure
