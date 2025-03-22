@@ -1,0 +1,24 @@
+{
+  "name": "roman-baths-game",
+  "version": "1.0.0",
+  "description": "A 3D game where you explore Roman baths and collect gold pots",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "game",
+    "three.js",
+    "3d",
+    "roman",
+    "baths"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

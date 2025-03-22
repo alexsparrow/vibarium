@@ -1,0 +1,17 @@
+services:
+  # Static site service
+  - type: web
+    name: roman-baths-game
+    runtime: static
+    buildCommand: null # No build step needed
+    staticPublishPath: .
+    envVars:
+      - key: NODE_VERSION
+        value: 16
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: max-age=31536000, immutable
+      - path: /index.html
+        name: Cache-Control
+        value: no-cache
