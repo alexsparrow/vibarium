@@ -8,15 +8,16 @@ export class Minimap {
         
         // Minimap settings
         this.size = 150; // Size in pixels
-        this.mapScale = 1.5; // Scale factor (higher = more zoomed out)
+        this.mapScale = 1.0; // Scale factor (higher = more zoomed out, lower = more zoomed in)
         this.borderWidth = 2;
         
         // Playable area bounds (from level.json)
+        // Adjusted to focus more on the central playable area with the baths
         this.bounds = {
-            minX: -45,
-            maxX: 45,
-            minZ: -40,
-            maxZ: 45
+            minX: -30,
+            maxX: 30,
+            minZ: -30,
+            maxZ: 30
         };
         
         // Create the minimap container

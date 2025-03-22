@@ -1,4 +1,11 @@
 import * as THREE from 'three';
+import { 
+    CHARACTER_WATER_HEIGHT_OFFSET, 
+    CHARACTER_STATIONARY_WATER_HEIGHT_OFFSET, 
+    CHARACTER_SWIMMING_TILT_ANGLE,
+    CHARACTER_WATER_BOB_AMPLITUDE,
+    CHARACTER_WATER_BOB_FREQUENCY
+} from './constants.js';
 
 // Base class for characters (player and computer-controlled)
 export class Character {
@@ -8,6 +15,10 @@ export class Character {
         this.mesh = new THREE.Group();
         this.radius = 0.5; // Collision radius
         this.legAnimationTime = 0;
+        
+        // Initialize water state tracking
+        this.wasInWater = false;
+        this.lastSwimmingYRotation = 0;
         
         // Create the character mesh
         this.createMesh();
@@ -123,9 +134,26 @@ export class Character {
         // Update animation time
         this.legAnimationTime += delta * (inWater ? 1.5 : 3); // Slower animation in water
         
-        // Update character rotation to face direction of movement if moving
-        if (isMoving && (moveDirection.x !== 0 || moveDirection.z !== 0)) {
-            this.mesh.rotation.y = Math.atan2(moveDirection.x, moveDirection.z);
+        // Reset rotations of body parts to default
+        this.leftLeg.rotation.set(0, 0, 0);
+        this.rightLeg.rotation.set(0, 0, 0);
+        this.leftArm.rotation.set(0, 0, 0);
+        this.rightArm.rotation.set(0, 0, 0);
+        this.head.rotation.set(0, 0, 0);
+        
+        // Only reset mesh rotation if in water or not moving
+        // This allows the rotation set in the update method to persist when walking on land
+        if (inWater || !isMoving) {
+            // Store the current Y rotation so we can preserve it if needed
+            const currentYRotation = this.mesh.rotation.y;
+            
+            // Reset mesh rotation
+            this.mesh.rotation.set(0, 0, 0);
+            
+            // If not moving on land, preserve the Y rotation so the character keeps facing the same direction
+            if (!inWater && !isMoving) {
+                this.mesh.rotation.y = currentYRotation;
+            }
         }
         
         // Apply animations based on water status
@@ -135,26 +163,56 @@ export class Character {
             const swimAngle = Math.sin(this.legAnimationTime) * 0.8; // Increased amplitude for more noticeable movement
             const animationIntensity = isMoving ? 1.0 : 0.7; // Increased intensity when not moving
             
-            // Apply swimming animation
+            // For swimming, we need to handle the orientation differently
+            
+            // Set the direction the character is facing (based on movement)
+            if (moveDirection.x !== 0 || moveDirection.z !== 0) {
+                // Calculate the target rotation based on movement direction
+                const targetRotationY = Math.atan2(moveDirection.x, moveDirection.z);
+                
+                // When swimming, we want the character to be horizontal with head pointing
+                // in the direction of motion and legs opposite to the direction of motion
+                
+                // First, reset the rotation
+                this.mesh.rotation.set(0, 0, 0);
+                
+                // Step 1: Rotate the character to face the direction of travel in the XZ plane
+                this.mesh.rotation.y = targetRotationY;
+                
+                // Step 2: Apply a tilt rotation around the local X axis 
+                // to make the character horizontal with a slight upward tilt (head higher than legs)
+                const rotationMatrix = new THREE.Matrix4();
+                rotationMatrix.makeRotationX(CHARACTER_SWIMMING_TILT_ANGLE);
+                
+                // Apply the local rotation to the mesh
+                this.mesh.updateMatrix(); // Update the mesh's matrix to include the Y rotation
+                this.mesh.matrix.multiply(rotationMatrix); // Apply the X rotation in local space
+                this.mesh.rotation.setFromRotationMatrix(this.mesh.matrix); // Update rotation from matrix
+                
+                // Store the current Y rotation for use when transitioning to land
+                this.lastSwimmingYRotation = targetRotationY;
+            } else {
+                // If not moving, rotate back to vertical position
+                this.mesh.rotation.x = 0; // Vertical position when not moving in water
+            }
+            
+            // Apply swimming animation to limbs
             // Legs kick together in swimming - more exaggerated
-            this.leftLeg.rotation.x = swimAngle * animationIntensity;
-            this.rightLeg.rotation.x = swimAngle * animationIntensity;
+            this.leftLeg.rotation.z = swimAngle * animationIntensity; // Changed from x to z rotation
+            this.rightLeg.rotation.z = swimAngle * animationIntensity; // Changed from x to z rotation
             
             // Position legs more horizontally for swimming - more exaggerated
-            this.leftLeg.rotation.z = -0.5; // More outward
-            this.rightLeg.rotation.z = 0.5; // More outward
+            this.leftLeg.rotation.x = -0.3; // Adjusted for new orientation
+            this.rightLeg.rotation.x = 0.3; // Adjusted for new orientation
             
             // Arms do breaststroke-like motion - more exaggerated
-            this.leftArm.rotation.x = swimAngle * animationIntensity + 0.7; // More forward
-            this.rightArm.rotation.x = swimAngle * animationIntensity + 0.7; // More forward
-            this.leftArm.rotation.z = Math.PI / 3; // More outward
-            this.rightArm.rotation.z = -Math.PI / 3; // More outward
-            
-            // Tilt body to be horizontal for swimming
-            this.mesh.rotation.x = 1.2; // Much more forward tilt (close to horizontal)
+            this.leftArm.rotation.z = swimAngle * animationIntensity + 0.7; // Changed from x to z rotation
+            this.rightArm.rotation.z = swimAngle * animationIntensity + 0.7; // Changed from x to z rotation
+            this.leftArm.rotation.x = Math.PI / 3; // Adjusted for new orientation
+            this.rightArm.rotation.x = -Math.PI / 3; // Adjusted for new orientation
             
             // Adjust head position to look forward while swimming
-            this.head.rotation.x = -0.8; // Tilt head up to look forward
+            this.head.rotation.x = 0.5; // Adjusted for new orientation
         } else if (isMoving) {
             // Walking animation - only when moving and not in water
             const legSwing = Math.sin(this.legAnimationTime) * 0.3;
@@ -203,6 +261,15 @@ export class PlayerCharacter extends Character {
         const waterStatus = isInWater(this.mesh.position.x, this.mesh.position.z);
         const inWater = waterStatus.inWater;
         
+        // Check for water-to-land transition
+        if (this.wasInWater && !inWater) {
+            // Reset rotation completely when transitioning from water to land
+            this.mesh.rotation.set(0, this.lastSwimmingYRotation || 0, 0);
+        }
+        
+        // Store current water state for next frame
+        this.wasInWater = inWater;
+        
         // Movement speed - slower in water
         const baseSpeed = inWater ? 2 : 5; // Slower in water
         const moveSpeed = baseSpeed * delta; // Units per second
@@ -238,6 +305,37 @@ export class PlayerCharacter extends Character {
                 // Update character position
                 this.mesh.position.x = newX;
                 this.mesh.position.z = newZ;
+                
+                // If not in water, rotate the character to face the direction of travel
+                if (!inWater && (moveDirection.x !== 0 || moveDirection.z !== 0)) {
+                    // Calculate the target rotation based on movement direction
+                    // In THREE.js, rotation.y is the rotation around the Y axis (vertical axis)
+                    // A rotation of 0 means facing negative Z (north in our game)
+                    // We need to calculate the angle between the movement vector and the negative Z axis
+                    
+                    // Add PI to make the character face the direction of travel
+                    // This is because the character model is initially facing the negative Z direction
+                    const targetRotationY = Math.atan2(moveDirection.x, moveDirection.z);
+                    
+                    // Apply the rotation directly to the mesh
+                    this.mesh.rotation.y = targetRotationY;
+                    
+                    // Skip the normal animation update to prevent it from overriding our rotation
+                    // Instead, manually update the limbs for walking animation
+                    const legSwing = Math.sin(this.legAnimationTime) * 0.3;
+                    this.leftLeg.rotation.x = legSwing;
+                    this.rightLeg.rotation.x = -legSwing;
+                    this.leftLeg.rotation.z = 0;
+                    this.rightLeg.rotation.z = 0;
+                    this.leftArm.rotation.x = 0;
+                    this.rightArm.rotation.x = 0;
+                    this.leftArm.rotation.z = Math.PI / 6; // Default angle
+                    this.rightArm.rotation.z = -Math.PI / 6; // Default angle
+                    this.head.rotation.x = 0;
+                    
+                    // Debug log to check rotation values
+                    console.log(`Player rotation: ${this.mesh.rotation.y.toFixed(2)}, moveDirection: ${moveDirection.x.toFixed(2)}, ${moveDirection.z.toFixed(2)}`);
+                }
             }
         }
         
@@ -254,9 +352,19 @@ export class PlayerCharacter extends Character {
         let targetHeight;
         
         if (inWater) {
-            // Float higher in the water (only about 30% of body height submerged)
-            // The character's total height is about 4 units, so we submerge only about 1.2 units
-            targetHeight = waterStatus.waterHeight - 0.6;
+            // Use different height offsets based on whether the character is moving or not
+            let baseOffset;
+            if (isMoving) {
+                // Use regular offset when moving in water
+                baseOffset = CHARACTER_WATER_HEIGHT_OFFSET;
+            } else {
+                // Use deeper offset when stationary in water
+                baseOffset = CHARACTER_STATIONARY_WATER_HEIGHT_OFFSET;
+            }
+            
+            // Add bobbing motion in water
+            const bobOffset = Math.sin(this.legAnimationTime * CHARACTER_WATER_BOB_FREQUENCY) * CHARACTER_WATER_BOB_AMPLITUDE;
+            targetHeight = waterStatus.waterHeight + baseOffset + bobOffset;
         } else {
             // Use height map when not in water
             targetHeight = getHeightAtPosition(this.mesh.position.x, this.mesh.position.z);
@@ -307,6 +415,15 @@ export class ComputerCharacter extends Character {
         // Check if character is in water
         const waterStatus = isInWater(this.mesh.position.x, this.mesh.position.z);
         const inWater = waterStatus.inWater;
+        
+        // Check for water-to-land transition
+        if (this.wasInWater && !inWater) {
+            // Reset rotation completely when transitioning from water to land
+            this.mesh.rotation.set(0, this.lastSwimmingYRotation || 0, 0);
+        }
+        
+        // Store current water state for next frame
+        this.wasInWater = inWater;
         
         // Movement speed - slower in water
         const baseSpeed = inWater ? 1.8 : 4.5; // Slightly slower than player
@@ -411,6 +528,36 @@ export class ComputerCharacter extends Character {
                 this.mesh.position.x = newX;
                 this.mesh.position.z = newZ;
                 
+                // If not in water, rotate the character to face the direction of travel
+                if (!inWater && (moveX !== 0 || moveZ !== 0)) {
+                    // Calculate the target rotation based on movement direction
+                    // In THREE.js, rotation.y is the rotation around the Y axis (vertical axis)
+                    // A rotation of 0 means facing negative Z (north in our game)
+                    // We need to calculate the angle between the movement vector and the negative Z axis
+                    
+                    // Calculate the target rotation based on movement direction
+                    const targetRotationY = Math.atan2(moveX, moveZ);
+                    
+                    // Apply the rotation directly to the mesh
+                    this.mesh.rotation.y = targetRotationY;
+                    
+                    // Skip the normal animation update to prevent it from overriding our rotation
+                    // Instead, manually update the limbs for walking animation
+                    const legSwing = Math.sin(this.legAnimationTime) * 0.3;
+                    this.leftLeg.rotation.x = legSwing;
+                    this.rightLeg.rotation.x = -legSwing;
+                    this.leftLeg.rotation.z = 0;
+                    this.rightLeg.rotation.z = 0;
+                    this.leftArm.rotation.x = 0;
+                    this.rightArm.rotation.x = 0;
+                    this.leftArm.rotation.z = Math.PI / 6; // Default angle
+                    this.rightArm.rotation.z = -Math.PI / 6; // Default angle
+                    this.head.rotation.x = 0;
+                    
+                    // Debug log to check rotation values
+                    console.log(`Computer rotation: ${this.mesh.rotation.y.toFixed(2)}, moveX: ${moveX.toFixed(2)}, moveZ: ${moveZ.toFixed(2)}`);
+                }
+                
                 // Reset consecutive collisions counter
                 this.consecutiveCollisions = 0;
             } else {
@@ -448,9 +595,19 @@ export class ComputerCharacter extends Character {
         let targetHeight;
         
         if (inWater) {
-            // Float higher in the water (only about 30% of body height submerged)
-            // The character's total height is about 4 units, so we submerge only about 1.2 units
-            targetHeight = waterStatus.waterHeight - 0.6;
+            // Use different height offsets based on whether the character is moving or not
+            let baseOffset;
+            if (isMoving) {
+                // Use regular offset when moving in water
+                baseOffset = CHARACTER_WATER_HEIGHT_OFFSET;
+            } else {
+                // Use deeper offset when stationary in water
+                baseOffset = CHARACTER_STATIONARY_WATER_HEIGHT_OFFSET;
+            }
+            
+            // Add bobbing motion in water
+            const bobOffset = Math.sin(this.legAnimationTime * CHARACTER_WATER_BOB_FREQUENCY) * CHARACTER_WATER_BOB_AMPLITUDE;
+            targetHeight = waterStatus.waterHeight + baseOffset + bobOffset;
         } else {
             // Use height map when not in water
             targetHeight = getHeightAtPosition(this.mesh.position.x, this.mesh.position.z);
