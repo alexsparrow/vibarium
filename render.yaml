@@ -1,7 +1,7 @@
 services:
   # Static site service
   - type: web
-    name: roman-baths-game
+    name: vibarium
     runtime: static
     buildCommand: null # No build step needed
     staticPublishPath: .

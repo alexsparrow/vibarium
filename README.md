@@ -1,4 +1,4 @@
-# Roman Baths Game
+# Vibarium
 
 A 3D game where you explore Roman baths and collect gold pots while competing against an AI opponent.
 
@@ -45,7 +45,7 @@ This game can be easily deployed as a static site on [Render](https://render.com
 
 4. **Deploy the Site**
    - Render will automatically deploy your site
-   - Once deployed, you'll get a URL like `https://roman-baths-game.onrender.com`
+   - Once deployed, you'll get a URL like `https://vibarium.onrender.com`
 
 ### Option 2: Manual configuration
 
@@ -60,7 +60,7 @@ This game can be easily deployed as a static site on [Render](https://render.com
    - From the Render dashboard, click "New" and select "Static Site"
    - Select the GitHub repository containing the game
    - Configure the following settings:
-     - **Name**: Choose a name for your site (e.g., roman-baths-game)
+     - **Name**: Choose a name for your site (e.g., vibarium)
      - **Build Command**: Leave empty (no build step required)
      - **Publish Directory**: `.` (root directory)
 
