@@ -8,8 +8,16 @@ export class Minimap {
         
         // Minimap settings
         this.size = 150; // Size in pixels
-        this.mapScale = 2.5; // Scale factor (higher = more zoomed out)
+        this.mapScale = 1.5; // Scale factor (higher = more zoomed out)
         this.borderWidth = 2;
+        
+        // Playable area bounds (from level.json)
+        this.bounds = {
+            minX: -45,
+            maxX: 45,
+            minZ: -40,
+            maxZ: 45
+        };
         
         // Create the minimap container
         this.createMinimapContainer();
@@ -173,8 +181,8 @@ export class Minimap {
         this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
         this.ctx.lineWidth = 0.5;
         
-        // Vertical grid lines
-        for (let x = -40; x <= 40; x += 10) {
+        // Vertical grid lines - adjusted to match playable area bounds
+        for (let x = this.bounds.minX; x <= this.bounds.maxX; x += 10) {
             const screenX = this.worldToScreenX(x);
             this.ctx.beginPath();
             this.ctx.moveTo(screenX, 0);
@@ -182,8 +190,8 @@ export class Minimap {
             this.ctx.stroke();
         }
         
-        // Horizontal grid lines
-        for (let z = -40; z <= 40; z += 10) {
+        // Horizontal grid lines - adjusted to match playable area bounds
+        for (let z = this.bounds.minZ; z <= this.bounds.maxZ; z += 10) {
             const screenY = this.worldToScreenY(z);
             this.ctx.beginPath();
             this.ctx.moveTo(0, screenY);
@@ -251,12 +259,18 @@ export class Minimap {
     
     // Convert world X coordinate to screen X coordinate
     worldToScreenX(x) {
-        return this.size / 2 + x / this.mapScale;
+        // Map world coordinates to screen coordinates based on bounds
+        const worldWidth = this.bounds.maxX - this.bounds.minX;
+        const centerX = (this.bounds.minX + this.bounds.maxX) / 2;
+        return this.size / 2 + ((x - centerX) / this.mapScale);
     }
     
     // Convert world Z coordinate to screen Y coordinate
     worldToScreenY(z) {
-        return this.size / 2 + z / this.mapScale;
+        // Map world coordinates to screen coordinates based on bounds
+        const worldHeight = this.bounds.maxZ - this.bounds.minZ;
+        const centerZ = (this.bounds.minZ + this.bounds.maxZ) / 2;
+        return this.size / 2 + ((z - centerZ) / this.mapScale);
     }
     
     // Draw water areas from level data
