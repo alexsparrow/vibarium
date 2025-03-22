@@ -9,10 +9,45 @@
     },
     {
       "id": "ad2",
-      "position": "none",
-      "name": "Sparrow Crane Hire",
-      "description": "A lifting experience",
-      "image": "images/ads/sch.png"
+      "position": "south1",
+      "name": "Wine",
+      "description": "Wine ad",
+      "image": "images/ads/wine_ad.png"
+    },
+    {
+      "id": "ad3",
+      "position": "south2",
+      "name": "Gladiators",
+      "description": "Gladiators",
+      "image": "images/ads/gladiators.png"
+    },
+    {
+      "id": "ad4",
+      "position": "east1",
+      "name": "Gladiators",
+      "description": "Gladiators",
+      "image": "images/ads/mcintyre.png"
+    },
+    {
+      "id": "ad5",
+      "position": "east2",
+      "name": "Gladiators",
+      "description": "Gladiators",
+      "image": "images/ads/your_ad.png"
+    },
+    {
+      "id": "ad6",
+      "position": "west1",
+      "name": "Gladiators",
+      "description": "Gladiators",
+      "image": "images/ads/your_ad.png"
+    },
+    {
+      "id": "ad6",
+      "position": "west2",
+      "name": "Gladiators",
+      "description": "Gladiators",
+      "image": "images/ads/your_ad.png"
     }
   ]
 }
